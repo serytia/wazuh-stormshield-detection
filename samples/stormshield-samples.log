@@ -1,15 +1,15 @@
-# Exemples de logs Stormshield SNS (format WELF field=value).
-# Test : while IFS= read -r l; do echo "$l" | /var/ossec/bin/wazuh-logtest; done < stormshield-samples.log
+# Sample Stormshield SNS logs (WELF field=value format).
+# Test: while IFS= read -r l; do echo "$l" | /var/ossec/bin/wazuh-logtest; done < stormshield-samples.log
 
-# --- Filtrage (id=firewall) : blocage puis autorisation ---
+# --- Filtering (id=firewall): block then allow ---
 Feb 10 14:22:01 sns id=firewall time="2026-02-10 14:22:01" fw="SN910" pri=4 ruleid=3 proto=https src=203.0.113.7 srcport=51000 dst=192.168.1.10 dstport=443 action=block msg="Blocked by filter"
 Feb 10 14:22:03 sns id=firewall time="2026-02-10 14:22:03" fw="SN910" pri=6 ruleid=8 proto=https src=192.168.1.50 srcport=52344 dst=93.184.216.34 dstport=443 action=pass
-# --- Scan : rafale de blocages depuis la meme source (declenche 100303 a 10/60s) ---
+# --- Scan: burst of blocks from the same source (triggers 100303 at 10/60s) ---
 Feb 10 14:22:05 sns id=firewall time="2026-02-10 14:22:05" fw="SN910" pri=4 proto=tcp src=203.0.113.7 srcport=40001 dst=192.168.1.10 dstport=22 action=block
 Feb 10 14:22:05 sns id=firewall time="2026-02-10 14:22:05" fw="SN910" pri=4 proto=tcp src=203.0.113.7 srcport=40002 dst=192.168.1.10 dstport=3389 action=block
-# --- Authentification (id=auth) : echecs (declenche 100310, puis 100311 en rafale) ---
+# --- Authentication (id=auth): failures (triggers 100310, then 100311 in a burst) ---
 Feb 10 14:23:10 sns id=auth time="2026-02-10 14:23:10" fw="SN910" src=203.0.113.50 user="admin" msg="authentication failed"
 Feb 10 14:23:12 sns id=auth time="2026-02-10 14:23:12" fw="SN910" src=203.0.113.50 user="root" msg="user authentication denied"
-# --- Alarme IPS (id=alarm) : blocage puis simple detection ---
+# --- IPS alarm (id=alarm): block then plain detection ---
 Feb 10 14:24:00 sns id=alarm time="2026-02-10 14:24:00" fw="SN910" src=203.0.113.7 dst=192.168.1.10 action=block alarmid=85 msg="Possible SQL injection"
 Feb 10 14:24:30 sns id=alarm time="2026-02-10 14:24:30" fw="SN910" src=198.51.100.9 dst=192.168.1.20 action=pass alarmid=140 msg="Suspicious HTTP request"

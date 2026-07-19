@@ -1,8 +1,8 @@
-<!-- Stormshield SNS (SN series) - decodeurs des logs WELF (field=value) -->
-<!-- Le champ id= = type de log : firewall (filtrage), auth (authentification), alarm (IPS)... -->
-<!-- Compatible Wazuh 4.x. Formats cales sur la doc « Description des journaux d'audit ». -->
+<!-- Stormshield SNS (SN series) - WELF log decoders (field=value) -->
+<!-- The id= field = log type: firewall (filtering), auth (authentication), alarm (IPS)... -->
+<!-- Wazuh 4.x compatible. Formats based on the "Audit logs description" documentation. -->
 
-<!-- ===== Filtrage (id=firewall) ===== -->
+<!-- ===== Filtering (id=firewall) ===== -->
 <decoder name="stormshield">
   <prematch>id=firewall </prematch>
 </decoder>
@@ -12,7 +12,7 @@
   <order>protocol,srcip,srcport,dstip,dstport,action</order>
 </decoder>
 
-<!-- ===== Authentification (id=auth) ===== -->
+<!-- ===== Authentication (id=auth) ===== -->
 <decoder name="stormshield-auth">
   <prematch>id=auth </prematch>
 </decoder>
@@ -22,7 +22,7 @@
   <order>srcip,dstuser,ss_msg</order>
 </decoder>
 
-<!-- ===== Alarme IPS (id=alarm) ===== -->
+<!-- ===== IPS alarm (id=alarm) ===== -->
 <decoder name="stormshield-alarm">
   <prematch>id=alarm </prematch>
 </decoder>

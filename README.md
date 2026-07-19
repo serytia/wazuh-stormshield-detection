@@ -1,33 +1,32 @@
 # Wazuh Detection Pack — Stormshield SNS
 
-> Règles et décodeurs Wazuh pour les pare-feux **Stormshield Network Security (SNS)**.
-> *Wazuh detection rules & decoders for Stormshield SNS firewalls.*
+> Wazuh rules & decoders for **Stormshield Network Security (SNS)** firewalls.
 
-## Le problème
+## The problem
 
-Wazuh n'a **pas de support natif** pour les logs Stormshield SNS. Envoyés bruts en syslog, ils arrivent au format **WELF** (`champ=valeur`) et ne sont ni décodés ni corrélés : un **scan** (rafale de blocages), un **brute-force** sur le portail d'authentification, une **alarme IPS bloquante** — rien ne remonte en clair, rien ne se corrèle.
+Wazuh has **no native support** for Stormshield SNS logs. Sent raw over syslog, they arrive in the **WELF** format (`field=value`) and are neither decoded nor correlated: a **scan** (burst of blocks), a **brute-force** on the authentication portal, a **blocking IPS alarm** — nothing surfaces in clear text, nothing correlates.
 
-Ce pack décode les logs WELF de Stormshield — filtrage (`id=firewall`), authentification (`id=auth`), IPS (`id=alarm`) — et ajoute des règles de détection mappées **MITRE ATT&CK**.
+This pack decodes Stormshield WELF logs — filtering (`id=firewall`), authentication (`id=auth`), IPS (`id=alarm`) — and adds detection rules mapped to **MITRE ATT&CK**.
 
-## Ce que le pack détecte
+## What the pack detects
 
-| Événement Stormshield | Règle | Niveau | MITRE ATT&CK |
+| Stormshield event | Rule | Level | MITRE ATT&CK |
 |---|---|:---:|---|
-| Connexion **bloquée** par le filtrage | `100301` | 4 | — |
-| **Scan / attaque** (blocages répétés, même source) | `100303` | **10** | T1046 — Network Service Discovery |
-| **Échec d'authentification** | `100310` | 5 | T1110 — Brute Force |
-| **Brute-force** authentification | `100311` | **10** | T1110 |
-| Alarme **IPS** | `100320` | 6 | — |
-| **Alarme IPS bloquante** | `100321` | **9** | T1046 |
+| Connection **blocked** by filtering | `100301` | 4 | — |
+| **Scan / attack** (repeated blocks, same source) | `100303` | **10** | T1046 — Network Service Discovery |
+| **Authentication failure** | `100310` | 5 | T1110 — Brute Force |
+| Authentication **brute-force** | `100311` | **10** | T1110 |
+| **IPS** alarm | `100320` | 6 | — |
+| **Blocking IPS alarm** | `100321` | **9** | T1046 |
 
-Les connexions **autorisées** (`100302`) sont décodées en niveau 0 : traçables, sans bruit d'alerte.
+**Allowed** connections (`100302`) are decoded at level 0: traceable, without alert noise.
 
-Champs décodés exploitables : `srcip`, `srcport`, `dstip`, `dstport`, `protocol`, `action`, `dstuser`, `ss_msg`, `ss_alarmid`.
+Decoded fields you can use: `srcip`, `srcport`, `dstip`, `dstport`, `protocol`, `action`, `dstuser`, `ss_msg`, `ss_alarmid`.
 
-## Prérequis
+## Requirements
 
 - Wazuh **4.x**.
-- Logs Stormshield SNS transmis au manager Wazuh en **syslog** (voir plus bas).
+- Stormshield SNS logs forwarded to the Wazuh manager over **syslog** (see below).
 
 ## Installation
 
@@ -37,14 +36,14 @@ cd wazuh-stormshield-detection
 sudo ./install.sh
 ```
 
-Le script copie les fichiers, **valide la configuration** (`wazuh-analysisd -t`) puis redémarre Wazuh. Rollback : `sudo ./uninstall.sh`.
+The script copies the files, **validates the configuration** (`wazuh-analysisd -t`), then restarts Wazuh. Rollback: `sudo ./uninstall.sh`.
 
-### Installation manuelle
+### Manual installation
 
-Copier `decoders/stormshield_decoders.xml` dans `/var/ossec/etc/decoders/` et
-`rules/stormshield_rules.xml` dans `/var/ossec/etc/rules/` (propriétaire `wazuh:wazuh`, mode `660`), puis `/var/ossec/bin/wazuh-control restart`.
+Copy `decoders/stormshield_decoders.xml` to `/var/ossec/etc/decoders/` and
+`rules/stormshield_rules.xml` to `/var/ossec/etc/rules/` (owner `wazuh:wazuh`, mode `660`), then `/var/ossec/bin/wazuh-control restart`.
 
-## Tester sans Stormshield
+## Test without Stormshield
 
 ```bash
 while IFS= read -r line; do
@@ -52,35 +51,35 @@ while IFS= read -r line; do
 done < samples/stormshield-samples.log
 ```
 
-Les samples couvrent les trois voies (filtrage, authentification, IPS).
+The samples cover the three paths (filtering, authentication, IPS).
 
-## Envoyer les logs Stormshield à Wazuh
+## Send Stormshield logs to Wazuh
 
-- **Sur le SNS** : *Configuration → Notifications → Syslog* — ajouter le manager Wazuh comme serveur syslog (UDP/TCP **514**).
-- **Sur Wazuh** : activer la réception syslog distante dans `ossec.conf` :
+- **On the SNS**: *Configuration → Notifications → Syslog* — add the Wazuh manager as a syslog server (UDP/TCP **514**).
+- **On Wazuh**: enable remote syslog reception in `ossec.conf`:
   ```xml
   <remote>
     <connection>syslog</connection>
     <port>514</port>
     <protocol>udp</protocol>
-    <allowed-ips>IP_DU_FIREWALL</allowed-ips>
+    <allowed-ips>FIREWALL_IP</allowed-ips>
   </remote>
   ```
-  puis redémarrer Wazuh.
+  then restart Wazuh.
 
-## Tableau de bord
+## Dashboard
 
-Requêtes et visualisations prêtes à l'emploi dans [`dashboard/README.md`](dashboard/README.md).
+Ready-to-use queries and visualizations in [`dashboard/README.md`](dashboard/README.md).
 
-## Réserve & feuille de route
+## Caveats & roadmap
 
-- Le décodeur **filtrage** (`id=firewall`) est le plus solide. Les décodeurs **auth** et **alarm** sont calés sur la documentation Stormshield « Description des journaux d'audit » et validés sur des logs d'exemple ; **l'ordre exact des champs et la valeur du `id=` restent à reconfirmer sur un vrai SNS en production**. Le décodeur ciblant les champs **par nom**, le risque est faible : au pire une règle ne se déclenche pas — pas de faux positif.
-- À venir : géo-IP sur `srcip`, catégories d'alarmes IPS, tunnels VPN (`id=vpn`), dashboard « 1-clic » (`.ndjson`).
+- The **filtering** decoder (`id=firewall`) is the most solid. The **auth** and **alarm** decoders are based on the Stormshield "Audit logs description" documentation and validated against sample logs; **the exact field order and the `id=` value remain to be reconfirmed on a real SNS in production**. Since the decoders target fields **by name**, the risk is low: at worst a rule doesn't fire — no false positives.
+- Coming next: geo-IP on `srcip`, IPS alarm categories, VPN tunnels (`id=vpn`).
 
-## Aller plus loin
+## Going further
 
-Ce pack couvre Stormshield SNS. Pour **brancher la détection sur toute votre stack** (Proxmox, Microsoft 365, sauvegardes…), un **déploiement clé en main**, ou une version **white-label pour MSP/MSSP** : ouvrez une **[issue](../../issues)** ou contactez **[@serytia](https://github.com/serytia)**.
+This pack covers Stormshield SNS. To **wire detection across your whole stack** (Proxmox, Microsoft 365, backups…), a **turnkey deployment**, or a **white-label build for MSP/MSSP**: open an **[issue](../../issues)** or reach out to **[@serytia](https://github.com/serytia)**.
 
-## Licence
+## License
 
-**GPLv2** — cohérent avec le ruleset Wazuh. Voir [LICENSE](LICENSE).
+**GPLv2** — consistent with the Wazuh ruleset. See [LICENSE](LICENSE).
