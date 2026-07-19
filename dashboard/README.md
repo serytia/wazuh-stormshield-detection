@@ -29,5 +29,22 @@ Champs décodés exploitables : `data.srcip`, `data.dstip`, `data.dstport`, `dat
 | Échecs d'auth par utilisateur | Barres | `rule.groups: "authentication_failed"` · champ `data.dstuser` |
 | Alarmes IPS par `alarmid` | Table | `rule.groups: "ids"` · champ `data.ss_alarmid` |
 
-> Le dashboard **« 1-clic »** (`.ndjson`, comme pour le pack Proxmox) sera ajouté après
-> validation visuelle sur un stack Wazuh complet — pour ne rien publier qui n'ait été vérifié.
+## Import « 1-clic »
+
+Le dashboard **« Stormshield SNS - Detection (pack) »** est fourni prêt à importer :
+[`sns-dashboard.ndjson`](sns-dashboard.ndjson) — compteur, camembert MITRE ATT&CK, timeline par
+niveau de sévérité, top sources bloquées, ports ciblés, et table des alarmes IPS. **Validé sur
+Wazuh Dashboard 4.14 / OpenSearch Dashboards 2.19.**
+
+- **Via l'UI** : *Dashboards Management → Saved Objects → Import* → `sns-dashboard.ndjson` →
+  *Import* (coche « overwrite »). Ouvre ensuite « Stormshield SNS - Detection (pack) » et règle le
+  time picker sur *Last 24 hours*.
+- **Via l'API** :
+  ```bash
+  curl -sk -u admin:PASS -H "osd-xsrf: true" \
+    -F file=@sns-dashboard.ndjson \
+    "https://VOTRE-DASHBOARD/api/saved_objects/_import?overwrite=true"
+  ```
+
+Il référence l'index-pattern `wazuh-alerts-*` (ID par défaut de Wazuh). Si ton installation
+utilise un autre ID, adapte la référence dans le `.ndjson`.
