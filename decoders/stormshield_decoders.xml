@@ -1,0 +1,33 @@
+<!-- Stormshield SNS (SN series) - decodeurs des logs WELF (field=value) -->
+<!-- Le champ id= = type de log : firewall (filtrage), auth (authentification), alarm (IPS)... -->
+<!-- Compatible Wazuh 4.x. Formats cales sur la doc « Description des journaux d'audit ». -->
+
+<!-- ===== Filtrage (id=firewall) ===== -->
+<decoder name="stormshield">
+  <prematch>id=firewall </prematch>
+</decoder>
+<decoder name="stormshield-fw">
+  <parent>stormshield</parent>
+  <regex type="pcre2">\bproto=(\S+).*?\bsrc=(\S+)\s+srcport=(\d+).*?\bdst=(\S+)\s+dstport=(\d+).*?\baction=(\w+)</regex>
+  <order>protocol,srcip,srcport,dstip,dstport,action</order>
+</decoder>
+
+<!-- ===== Authentification (id=auth) ===== -->
+<decoder name="stormshield-auth">
+  <prematch>id=auth </prematch>
+</decoder>
+<decoder name="stormshield-auth-f">
+  <parent>stormshield-auth</parent>
+  <regex type="pcre2">\bsrc=(\S+).*?\buser="([^"]*)".*?\bmsg="([^"]*)"</regex>
+  <order>srcip,dstuser,ss_msg</order>
+</decoder>
+
+<!-- ===== Alarme IPS (id=alarm) ===== -->
+<decoder name="stormshield-alarm">
+  <prematch>id=alarm </prematch>
+</decoder>
+<decoder name="stormshield-alarm-f">
+  <parent>stormshield-alarm</parent>
+  <regex type="pcre2">\bsrc=(\S+).*?\bdst=(\S+).*?\baction=(\w+).*?\balarmid=(\d+)</regex>
+  <order>srcip,dstip,action,ss_alarmid</order>
+</decoder>
