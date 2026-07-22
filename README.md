@@ -6,7 +6,7 @@
 
 Wazuh has **no native support** for Stormshield SNS logs. Sent raw over syslog, they arrive in the **WELF** format (`field=value`) and are neither decoded nor correlated: a **scan** (burst of blocks), a **brute-force** on the authentication portal, a **blocking IPS alarm** — nothing surfaces in clear text, nothing correlates.
 
-This pack decodes Stormshield WELF logs — filtering (`id=firewall`), authentication (`id=auth`), IPS (`id=alarm`) — and adds detection rules mapped to **MITRE ATT&CK**.
+This pack decodes Stormshield WELF logs — filtering, authentication and IPS, distinguished by the **`logtype=`** field (`filter` / `auth` / `alarm`) that every SNS syslog line carries — and adds detection rules mapped to **MITRE ATT&CK**.
 
 ## What the pack detects
 
@@ -17,7 +17,7 @@ This pack decodes Stormshield WELF logs — filtering (`id=firewall`), authentic
 | **Authentication failure** | `100310` | 5 | T1110 — Brute Force |
 | Authentication **brute-force** | `100311` | **10** | T1110 |
 | **IPS** alarm | `100320` | 6 | — |
-| **Blocking IPS alarm** | `100321` | **9** | T1046 |
+| **Blocking IPS alarm** | `100321` | **9** | T1190 — Exploit Public-Facing Application |
 
 **Allowed** connections (`100302`) are decoded at level 0: traceable, without alert noise.
 
@@ -71,10 +71,20 @@ The samples cover the three paths (filtering, authentication, IPS).
 
 Ready-to-use queries and visualizations in [`dashboard/README.md`](dashboard/README.md).
 
-## Caveats & roadmap
+## Validation status
 
-- The **filtering** decoder (`id=firewall`) is the most solid. The **auth** and **alarm** decoders are based on the Stormshield "Audit logs description" documentation and validated against sample logs; **the exact field order and the `id=` value remain to be reconfirmed on a real SNS in production**. Since the decoders target fields **by name**, the risk is low: at worst a rule doesn't fire — no false positives.
-- Coming next: geo-IP on `srcip`, IPS alarm categories, VPN tunnels (`id=vpn`).
+Honest disclosure: the decoders are built to the field names and WELF/syslog format
+documented in Stormshield's *Description of audit logs* (SNS v4) and cross-checked against
+real log captures published by third-party integrations, then validated end-to-end with
+`wazuh-logtest` on a sample set covering filtering (incl. ICMP with no ports),
+authentication (both `src`/`user` field orders), and IPS alarms. They have **not yet been
+confirmed against a specific live SNS appliance** — field availability can vary by model
+and firmware, so run the `wazuh-logtest` check above on your own logs before relying on it
+in production. (An earlier version of this pack dispatched on `id=auth` / `id=alarm`, which
+real SNS syslog never emits — the type is always in `logtype=`; that is now fixed.)
+
+Coming next: geo-IP on `srcip`, IPS alarm categories, VPN tunnels (`logtype="vpn"`), and
+first-hand validation against a live/EVA appliance.
 
 ## Going further
 

@@ -1,33 +1,50 @@
-<!-- Stormshield SNS (SN series) - WELF log decoders (field=value) -->
-<!-- The id= field = log type: firewall (filtering), auth (authentication), alarm (IPS)... -->
-<!-- Wazuh 4.x compatible. Formats based on the "Audit logs description" documentation. -->
+<!-- Stormshield SNS (SN series) - WELF syslog decoders (field=value). -->
+<!-- The log TYPE is carried by the logtype="..." field (filter / auth / alarm), NOT by
+     id=: every syslog line is emitted with a constant id=firewall (when present at all),
+     so dispatch is done on logtype=. Field names follow the SNS v4 "Description of audit
+     logs" technical note and real captures (Sekoia/Elastic integrations). Wazuh 4.x. -->
 
-<!-- ===== Filtering (id=firewall) ===== -->
+<!-- ===== Filtering (logtype="filter") ===== -->
 <decoder name="stormshield">
-  <prematch>id=firewall </prematch>
+  <prematch>logtype="filter"</prematch>
 </decoder>
 <decoder name="stormshield-fw">
   <parent>stormshield</parent>
-  <regex type="pcre2">\bproto=(\S+).*?\bsrc=(\S+)\s+srcport=(\d+).*?\bdst=(\S+)\s+dstport=(\d+).*?\baction=(\w+)</regex>
+  <!-- srcport/dstport are optional: non-TCP/UDP traffic (ICMP) has no ports, and a
+       required port would drop the whole line. action is required so only pass/block
+       events (the ones the rules act on) are decoded here. -->
+  <regex type="pcre2">\bproto=(\S+).*?\bsrc=(\S+)(?:\s+srcport=(\d+))?.*?\bdst=(\S+)(?:\s+dstport=(\d+))?.*?\baction=(\w+)</regex>
   <order>protocol,srcip,srcport,dstip,dstport,action</order>
 </decoder>
 
-<!-- ===== Authentication (id=auth) ===== -->
+<!-- ===== Authentication (logtype="auth") ===== -->
+<!-- The src= and user= fields appear in EITHER order depending on the event, so two
+     field decoders are provided under the same parent name; Wazuh uses the first that
+     matches. Both feed the same field names, so the rules (decoded_as stormshield-auth)
+     are order-agnostic. -->
 <decoder name="stormshield-auth">
-  <prematch>id=auth </prematch>
+  <prematch>logtype="auth"</prematch>
 </decoder>
-<decoder name="stormshield-auth-f">
+<decoder name="stormshield-auth">
   <parent>stormshield-auth</parent>
   <regex type="pcre2">\bsrc=(\S+).*?\buser="([^"]*)".*?\bmsg="([^"]*)"</regex>
   <order>srcip,dstuser,ss_msg</order>
 </decoder>
-
-<!-- ===== IPS alarm (id=alarm) ===== -->
-<decoder name="stormshield-alarm">
-  <prematch>id=alarm </prematch>
+<decoder name="stormshield-auth">
+  <parent>stormshield-auth</parent>
+  <regex type="pcre2">\buser="([^"]*)".*?\bsrc=(\S+).*?\bmsg="([^"]*)"</regex>
+  <order>dstuser,srcip,ss_msg</order>
 </decoder>
-<decoder name="stormshield-alarm-f">
+
+<!-- ===== IPS alarm (logtype="alarm") ===== -->
+<decoder name="stormshield-alarm">
+  <prematch>logtype="alarm"</prematch>
+</decoder>
+<decoder name="stormshield-alarm">
   <parent>stormshield-alarm</parent>
-  <regex type="pcre2">\bsrc=(\S+).*?\bdst=(\S+).*?\baction=(\w+).*?\balarmid=(\d+)</regex>
+  <!-- Network IPS alarms carry src/dst/action/alarmid; action is optional so a
+       detect-only (non-blocking) alarm still decodes. System alarms (no src, e.g.
+       "CRL download failed") don't match this and stay at the grouped level. -->
+  <regex type="pcre2">\bsrc=(\S+).*?\bdst=(\S+)(?:.*?\baction=(\w+))?.*?\balarmid=(\d+)</regex>
   <order>srcip,dstip,action,ss_alarmid</order>
 </decoder>

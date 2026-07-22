@@ -63,7 +63,11 @@
     <if_sid>100320</if_sid>
     <action>block</action>
     <description>Stormshield: BLOCKING IPS alarm (alarmid $(ss_alarmid)) src $(srcip) -> $(dstip)</description>
-    <mitre><id>T1046</id></mitre>
+    <!-- A blocking IPS alarm covers exploitation attempts (injections, protocol abuse,
+         known-CVE traffic), which map to Exploit Public-Facing Application. T1046
+         (Network Service Discovery) is scanning/recon and belongs on the many-blocks
+         rule 100303, not here. -->
+    <mitre><id>T1190</id></mitre>
     <group>ids,</group>
   </rule>
 

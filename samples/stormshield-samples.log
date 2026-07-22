@@ -1,15 +1,23 @@
-# Sample Stormshield SNS logs (WELF field=value format).
+# Sample Stormshield SNS logs (WELF field=value syslog format, SNS v4).
+# Format per the vendor "Description of audit logs" note: the log TYPE is the logtype=
+# field, every line carries a constant id=firewall, and fields are field="value" pairs.
+# IPs are TEST-NET (RFC 5737); fw serial is a placeholder.
 # Test: while IFS= read -r l; do echo "$l" | /var/ossec/bin/wazuh-logtest; done < stormshield-samples.log
 
-# --- Filtering (id=firewall): block then allow ---
-Feb 10 14:22:01 sns id=firewall time="2026-02-10 14:22:01" fw="SN910" pri=4 ruleid=3 proto=https src=203.0.113.7 srcport=51000 dst=192.168.1.10 dstport=443 action=block msg="Blocked by filter"
-Feb 10 14:22:03 sns id=firewall time="2026-02-10 14:22:03" fw="SN910" pri=6 ruleid=8 proto=https src=192.168.1.50 srcport=52344 dst=93.184.216.34 dstport=443 action=pass
+# --- Filtering (logtype="filter"): block then allow ---
+Feb 10 14:22:01 sns id=firewall time="2026-02-10 14:22:01" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:22:01" pri=4 ruleid=3 srcif="Ethernet3" srcifname="in" ipproto=tcp proto=https src=203.0.113.7 srcport=51000 dst=192.168.1.10 dstport=443 action=block msg="Blocked by filter" logtype="filter"
+Feb 10 14:22:03 sns id=firewall time="2026-02-10 14:22:03" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:22:03" pri=6 ruleid=8 srcif="Ethernet3" srcifname="in" ipproto=tcp proto=https src=192.168.1.50 srcport=52344 dst=93.184.216.34 dstport=443 action=pass logtype="filter"
+# --- Filtering, ICMP block (no srcport/dstport) ---
+Feb 10 14:22:04 sns id=firewall time="2026-02-10 14:22:04" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:22:04" pri=4 ipproto=icmp proto=icmp src=203.0.113.7 dst=192.168.1.10 action=block msg="Blocked by filter" logtype="filter"
 # --- Scan: burst of blocks from the same source (triggers 100303 at 10/60s) ---
-Feb 10 14:22:05 sns id=firewall time="2026-02-10 14:22:05" fw="SN910" pri=4 proto=tcp src=203.0.113.7 srcport=40001 dst=192.168.1.10 dstport=22 action=block
-Feb 10 14:22:05 sns id=firewall time="2026-02-10 14:22:05" fw="SN910" pri=4 proto=tcp src=203.0.113.7 srcport=40002 dst=192.168.1.10 dstport=3389 action=block
-# --- Authentication (id=auth): failures (triggers 100310, then 100311 in a burst) ---
-Feb 10 14:23:10 sns id=auth time="2026-02-10 14:23:10" fw="SN910" src=203.0.113.50 user="admin" msg="authentication failed"
-Feb 10 14:23:12 sns id=auth time="2026-02-10 14:23:12" fw="SN910" src=203.0.113.50 user="root" msg="user authentication denied"
-# --- IPS alarm (id=alarm): block then plain detection ---
-Feb 10 14:24:00 sns id=alarm time="2026-02-10 14:24:00" fw="SN910" src=203.0.113.7 dst=192.168.1.10 action=block alarmid=85 msg="Possible SQL injection"
-Feb 10 14:24:30 sns id=alarm time="2026-02-10 14:24:30" fw="SN910" src=198.51.100.9 dst=192.168.1.20 action=pass alarmid=140 msg="Suspicious HTTP request"
+Feb 10 14:22:05 sns id=firewall time="2026-02-10 14:22:05" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:22:05" pri=4 ipproto=tcp proto=ssh src=203.0.113.7 srcport=40001 dst=192.168.1.10 dstport=22 action=block logtype="filter"
+Feb 10 14:22:05 sns id=firewall time="2026-02-10 14:22:05" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:22:05" pri=4 ipproto=tcp proto=rdp src=203.0.113.7 srcport=40002 dst=192.168.1.10 dstport=3389 action=block logtype="filter"
+# --- Authentication (logtype="auth"): failure, src before user ---
+Feb 10 14:23:10 sns id=firewall time="2026-02-10 14:23:10" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:23:10" src=203.0.113.50 user="admin" domain="" method="" error=1 msg="Authentication Failed" logtype="auth"
+# --- Authentication failure, user before src (real SNS emits both orders) ---
+Feb 10 14:23:12 sns id=firewall time="2026-02-10 14:23:12" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:23:12" user="root" src=203.0.113.50 domain="corp.local" method="OPENVPN" error=3 msg="Authentication Failed" logtype="auth"
+# --- Authentication success (must NOT alert) ---
+Feb 10 14:23:20 sns id=firewall time="2026-02-10 14:23:20" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:23:20" src=192.168.1.50 user="admin" domain="" msg="SSH authentication success on the firewall" logtype="auth"
+# --- IPS alarm (logtype="alarm"): blocking alarm then plain detection ---
+Feb 10 14:24:00 sns id=firewall time="2026-02-10 14:24:00" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:24:00" ipproto=tcp proto=unknown src=203.0.113.7 srcport=1234 dst=192.168.1.10 dstport=443 action=block msg="Possible SQL injection" class=protocol classification=0 alarmid=85 logtype="alarm"
+Feb 10 14:24:30 sns id=firewall time="2026-02-10 14:24:30" fw="SNTEST0000000000" tz=+0100 startime="2026-02-10 14:24:30" ipproto=tcp proto=http src=198.51.100.9 srcport=5555 dst=192.168.1.20 dstport=80 action=pass msg="Suspicious HTTP request" class=http alarmid=140 logtype="alarm"
