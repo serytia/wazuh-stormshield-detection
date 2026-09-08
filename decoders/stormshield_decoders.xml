@@ -40,11 +40,32 @@
 <decoder name="stormshield-alarm">
   <prematch>logtype="alarm"</prematch>
 </decoder>
+<!-- Field ORDER is not stable inside an alarm line: real SNS lines put the alarm
+     header (class/alarmid/risk/target) either after the network fields or before
+     them, and system alarms carry no network fields at all. A single ordered regex
+     therefore decoded nothing on two of the three real alarm lines replayed on
+     2026-09-08. As for stormshield-auth, the cases are covered by sibling field
+     decoders under the same parent: Wazuh tries them in order and keeps the first
+     that matches, so the field names (and the rules) stay order-agnostic. -->
 <decoder name="stormshield-alarm">
   <parent>stormshield-alarm</parent>
-  <!-- Network IPS alarms carry src/dst/action/alarmid; action is optional so a
-       detect-only (non-blocking) alarm still decodes. System alarms (no src, e.g.
-       "CRL download failed") don't match this and stay at the grouped level. -->
+  <!-- 1. Network alarm, alarm header last: src/dst/[action]/alarmid.
+       action is optional so a detect-only (non-blocking) alarm still decodes. -->
   <regex type="pcre2">\bsrc=(\S+).*?\bdst=(\S+)(?:.*?\baction=(\w+))?.*?\balarmid=(\d+)</regex>
   <order>srcip,dstip,action,ss_alarmid</order>
+</decoder>
+<decoder name="stormshield-alarm">
+  <parent>stormshield-alarm</parent>
+  <!-- 2. Network alarm, alarm header first: alarmid then src/dst/[action]. Without
+       this the action was lost, so a BLOCKING alarm never reached rule 100321. -->
+  <regex type="pcre2">\balarmid=(\d+).*?\bsrc=(\S+).*?\bdst=(\S+)(?:.*?\baction=(\w+))?</regex>
+  <order>ss_alarmid,srcip,dstip,action</order>
+</decoder>
+<decoder name="stormshield-alarm">
+  <parent>stormshield-alarm</parent>
+  <!-- 3. System alarm (class=system: expired certificate, session timeout, CRL
+       download failure): no src/dst at all. Last sibling, so it only catches what
+       the two above rejected; it decodes the alarm id instead of nothing. -->
+  <regex type="pcre2">\balarmid=(\d+)</regex>
+  <order>ss_alarmid</order>
 </decoder>
