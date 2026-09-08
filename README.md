@@ -83,6 +83,37 @@ and firmware, so run the `wazuh-logtest` check above on your own logs before rel
 in production. (An earlier version of this pack dispatched on `id=auth` / `id=alarm`, which
 real SNS syslog never emits — the type is always in `logtype=`; that is now fixed.)
 
+### Replay on public SNS test logs (2026-09-08)
+
+48 lines of public Stormshield SNS logs were replayed through `wazuh-logtest`:
+`test-firewall.log` (35 lines) comes from the test data of Elastic's Stormshield
+integration (Elastic License 2.0), plus `test-log-families.log` (13 lines) from the same test
+directory, covering the other SNS log families. Both files are in `samples/`, unmodified.
+Numbers as measured, **before** the alarm fix described below:
+
+| File | Lines | Decoded by the pack |
+|---|:---:|---|
+| `test-firewall.log` | 35 | 3 (`filter` 1/1, `auth` 1/1, `alarm` 1/1 but with empty fields) |
+| 13-line log-family set | 13 | 5 (`auth` 2/2, `filter` 1/1, `alarm` 2/2, one with empty fields) |
+
+Every line of the three log types the pack claims to cover reached a pack decoder, but the
+field **order** inside an alarm line is not stable on real logs: 2 of the 3 alarm lines
+decoded zero fields, so a blocking IPS alarm stayed at level 6 (`100320`) instead of
+reaching `100321`. The alarm decoder now carries sibling decoders for the observed orders,
+including system alarms that have no `src`/`dst` at all. **Re-measured on a Wazuh 4.14.6
+manager after the fix** (same three files): the blocking IPS alarm with `alarmid` first now
+decodes `src`, `dst` and `action` and fires `100321` (level 9) instead of `100320` (level 6);
+the system alarm (`class=system`, no network fields) now decodes `ss_alarmid` and stays at
+`100320`; `stormshield-samples.log` still decodes 10/10 with the same rules as before.
+Coverage by log type is unchanged (3/35 and 5/13), because the other lines belong to
+families the pack does not claim.
+
+The other lines are log types this pack does not cover, by choice: `connection` (10),
+`server` (9), `system` (8), `web` (2), `vpn` (2), `count` (2), `filterstat` (2), `authstat`,
+`monitor`, `plugin`, `xvpn`, and one line of a deliberately unknown family. One `filter`
+line carrying an empty `action=` decodes at the
+grouped level only (`100300`, no fields).
+
 Coming next: geo-IP on `srcip`, IPS alarm categories, VPN tunnels (`logtype="vpn"`), and
 first-hand validation against a live/EVA appliance.
 
