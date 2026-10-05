@@ -2,6 +2,11 @@
 
 > Wazuh rules & decoders for **Stormshield Network Security (SNS)** firewalls.
 
+> **Status: not validated on real hardware.** The decoders follow Stormshield's documented log
+> format and were replayed against public SNS log samples with `wazuh-logtest`. They have never
+> been confirmed on a live SNS appliance. Read [Validation status](#validation-status) before
+> relying on this pack in production.
+
 ## The problem
 
 Wazuh has **no native support** for Stormshield SNS logs. Sent raw over syslog, they arrive in the **WELF** format (`field=value`) and are neither decoded nor correlated: a **scan** (burst of blocks), a **brute-force** on the authentication portal, a **blocking IPS alarm** — nothing surfaces in clear text, nothing correlates.
